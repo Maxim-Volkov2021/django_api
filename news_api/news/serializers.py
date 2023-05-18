@@ -4,7 +4,7 @@ from .models import News
 
 
 class NewsSerializer(serializers.ModelSerializer):
-    author = serializers.HiddenField(default=None)
+    # author = serializers.HiddenField(default=None)
     class Meta:
         model = News
         fields = ('id', 'title', 'content', 'timeCreate', 'author', 'tags')
