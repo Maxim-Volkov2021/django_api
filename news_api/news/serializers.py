@@ -1,14 +1,29 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 
-from .models import News
+from .models import *
 
 
 class NewsSerializer(serializers.ModelSerializer):
     # author = serializers.HiddenField(default=None)
     class Meta:
         model = News
-        fields = ('id', 'title', 'content', 'timeCreate', 'author', 'tags')
+        fields = ('id', 'title', 'content', 'timeCreate', 'author', 'tags', 'archive')
+
+
+class TagsSerializer(serializers.ModelSerializer):
+    # author = serializers.HiddenField(default=None)
+    class Meta:
+        model = Tags
+        fields = ('id', 'name')
+
+
+class AuthorsSerializer(serializers.ModelSerializer):
+    # author = serializers.HiddenField(default=None)
+    class Meta:
+        model = Author
+        fields = ('id', 'user', 'name')
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:

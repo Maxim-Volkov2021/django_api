@@ -7,11 +7,13 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
             return True
-        if request.method == 'POST' and (request.user and request.user.is_authenticated):
+        elif request.method == 'POST' and (request.user and request.user.is_authenticated):
             author = Author.objects.filter(user=request.user).order_by('id')
-            if author[0]:
+            if len(author) > 0:
                 request.data['author'] = author[0].pk
                 return True
+        elif request.method == 'PUT' or request.method == 'PATCH':
+            return True
         return False
 
 

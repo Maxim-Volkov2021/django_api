@@ -6,7 +6,7 @@ from .models import *
 class NewsAdmin(admin.ModelAdmin):
     list_display = ('id', 'title', 'get_author_name', 'timeCreate', 'archive')
     list_display_links = ('id', 'title')
-    search_fields = ('title', 'content')
+    search_fields = ('title', 'content', 'author__name', 'author__user__username', 'author__user__first_name', 'author__user__last_name')
     list_filter = ('tags', 'author', 'timeCreate')
     list_editable = ('archive',)
     filter_horizontal = ('tags',)
