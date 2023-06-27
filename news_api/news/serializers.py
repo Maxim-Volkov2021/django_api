@@ -22,7 +22,7 @@ class AuthorsSerializer(serializers.ModelSerializer):
     # author = serializers.HiddenField(default=None)
     class Meta:
         model = Author
-        fields = ('id', 'user', 'name')
+        fields = ('id', 'name')
 
 
 class RegisterSerializer(serializers.ModelSerializer):

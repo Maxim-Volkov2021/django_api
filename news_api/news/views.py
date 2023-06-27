@@ -13,31 +13,41 @@ from .permissions import *
 
 # Create your views here.
 class NewsViewSet(viewsets.ModelViewSet):
-    queryset = News.objects.filter(archive=False)
+    queryset = News.objects.filter(archive=False).order_by('-id')
     serializer_class = NewsSerializer
     permission_classes = (IsOwnerOrReadOnly,)
 
 
-    def character_definition_for_query(self, text):
-        #list_math_method = ["=", "~"]
-        list_name = ["title", "content", "author__id", 'author__name', 'author__user__first_name', 'author__user__last_name', "tags__id", "tags__name"]
+    def character_definition_for_query(self, text, param="news"):
+        #list_math_method = [":", "~"]
+        list_name_news = ["title", "content", "author__id", 'author__name', "tags__id", "tags__name"]
+        list_name_tags = ["id", "name"]
+        list_name_authors = ["id", "name"]
+        list_name = []
+        if param == "news":
+            list_name = list_name_news
+        elif param == "tags":
+            list_name = list_name_tags
+        elif param == "authors":
+            list_name = list_name_authors
+
         result = None
-        if "=" in text:
-            name_and_value = text.split("=")
-            name_and_value[0] = name_and_value[0].replace(".", "__")
+        if ":" in text:
+            name_and_value = text.split(":")
+            name_and_value[0] = name_and_value[0].replace(".", "__").strip()
             if len(name_and_value) == 2 and name_and_value[0] in list_name:
                 temp = {name_and_value[0]: name_and_value[1]}
                 result = Q(**temp)
         if "~" in text:
             name_and_value = text.split("~")
-            name_and_value[0] = name_and_value[0].replace(".", "__")
+            name_and_value[0] = name_and_value[0].replace(".", "__").strip()
             if len(name_and_value) == 2 and name_and_value[0] in list_name:
                 temp = {name_and_value[0] + "__contains": name_and_value[1]}
                 result = Q(**temp)
         return result
 
-
-    def list(self, request, *args, **kwargs):
+    @action(methods=['get'], detail=False)
+    def search(self, request, *args, **kwargs):
         if "query" in request.GET:
             text_query = request.GET["query"]
             symbol_AND = " AND "
@@ -92,7 +102,9 @@ class NewsViewSet(viewsets.ModelViewSet):
             else:
                 query = self.character_definition_for_query(text_query)
 
-            self.queryset = News.objects.filter(query)
+            if query == None:
+                return JsonResponse({'detail': "Bad Request"}, status=400)
+            self.queryset = News.objects.filter(query, archive=False).order_by('-id')
 
         return viewsets.ModelViewSet.list(self, request, *args, **kwargs)
 
@@ -119,6 +131,19 @@ class NewsViewSet(viewsets.ModelViewSet):
         self.serializer_class = TagsSerializer
         return viewsets.ModelViewSet.list(self, request, *args, **kwargs)
 
+    @action(methods=['get'], detail=False)
+    def tags_search(self, request, *args, **kwargs):
+        if "query" in request.GET:
+            text_query = request.GET["query"]
+            query = self.character_definition_for_query(text_query, "tags")
+            if query == None:
+                return JsonResponse({'detail': "Bad Request"}, status=400)
+            self.queryset = Tags.objects.filter(query)
+        else:
+            self.queryset = Tags.objects.all()
+        self.serializer_class = TagsSerializer
+        return viewsets.ModelViewSet.list(self, request, *args, **kwargs)
+
 
     @action(methods=['get'], detail=True)
     def author(self, request, pk, *args, **kwargs):
@@ -135,6 +160,20 @@ class NewsViewSet(viewsets.ModelViewSet):
         self.queryset = Author.objects.all()
         self.serializer_class = AuthorsSerializer
         return viewsets.ModelViewSet.list(self, request, *args, **kwargs)
+
+    @action(methods=['get'], detail=False)
+    def authors_search(self, request, *args, **kwargs):
+        if "query" in request.GET:
+            text_query = request.GET["query"]
+            query = self.character_definition_for_query(text_query, "authors")
+            if query == None:
+                return JsonResponse({'detail': "Bad Request"}, status=400)
+            self.queryset = Author.objects.filter(query)
+        else:
+            self.queryset = Author.objects.all()
+        self.serializer_class = AuthorsSerializer
+        return viewsets.ModelViewSet.list(self, request, *args, **kwargs)
+
 
     @action(methods=['get'], detail=False)
     def my(self, request, *args, **kwargs):
