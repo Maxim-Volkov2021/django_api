@@ -6,6 +6,7 @@ from .views import *
 
 router = routers.SimpleRouter()
 router.register('news', NewsViewSet)
+router.register('author/new', NewNotAuthorViewSet)
 
 urlpatterns = [
     path('api/v1/', include(router.urls)),

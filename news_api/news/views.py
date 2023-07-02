@@ -5,11 +5,12 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
-from django.db.models import Q
+
 
 from .models import *
 from .serializers import *
 from .permissions import *
+from .search_logic import *
 
 # Create your views here.
 class NewsViewSet(viewsets.ModelViewSet):
@@ -18,96 +19,16 @@ class NewsViewSet(viewsets.ModelViewSet):
     permission_classes = (IsOwnerOrReadOnly,)
 
 
-    def character_definition_for_query(self, text, param="news"):
-        #list_math_method = [":", "~"]
-        list_name_news = ["title", "content", "author__id", 'author__name', "tags__id", "tags__name"]
-        list_name_tags = ["id", "name"]
-        list_name_authors = ["id", "name"]
-        list_name = []
-        if param == "news":
-            list_name = list_name_news
-        elif param == "tags":
-            list_name = list_name_tags
-        elif param == "authors":
-            list_name = list_name_authors
-
-        result = None
-        if ":" in text:
-            name_and_value = text.split(":")
-            name_and_value[0] = name_and_value[0].replace(".", "__").strip()
-            if len(name_and_value) == 2 and name_and_value[0] in list_name:
-                temp = {name_and_value[0]: name_and_value[1]}
-                result = Q(**temp)
-        if "~" in text:
-            name_and_value = text.split("~")
-            name_and_value[0] = name_and_value[0].replace(".", "__").strip()
-            if len(name_and_value) == 2 and name_and_value[0] in list_name:
-                temp = {name_and_value[0] + "__contains": name_and_value[1]}
-                result = Q(**temp)
-        return result
-
     @action(methods=['get'], detail=False)
     def search(self, request, *args, **kwargs):
         if "query" in request.GET:
-            text_query = request.GET["query"]
-            symbol_AND = " AND "
-            symbol_OR = " OR "
-            AND_query = None
-            OR_query = None
-            query = None
-
-            if symbol_AND in text_query:
-                AND_list = text_query.split(symbol_AND)
-                AND_query_list = []
-                for i in range(len(AND_list)):
-                    if symbol_OR in AND_list[i]:
-                        OR_list = AND_list[i].split(symbol_OR)
-                        OR_query_list = []
-
-                        for j in range(len(OR_list)):
-                            OR_query_list.append(self.character_definition_for_query(OR_list[j]))
-                            if OR_query_list[len(OR_query_list) - 1] != None and OR_query == None:
-                                OR_query = OR_query_list[len(OR_query_list) - 1]
-                            elif OR_query_list[len(OR_query_list) - 1] != None:
-                                OR_query.add(OR_query_list[len(OR_query_list) - 1], Q.OR)
-
-                        if AND_query == None and OR_query != None:
-                            AND_query = OR_query
-                        elif AND_query != None and OR_query != None:
-                            AND_query.add(OR_query, Q.AND)
-
-                        OR_query = None
-
-
-                    else:
-                        AND_query_list.append(self.character_definition_for_query(AND_list[i]))
-                        if AND_query_list[len(AND_query_list) - 1] != None and AND_query == None:
-                            AND_query = AND_query_list[len(AND_query_list) - 1]
-                        elif AND_query_list[len(AND_query_list) - 1] != None:
-                            AND_query.add(AND_query_list[len(AND_query_list) - 1], Q.AND)
-
-                    if (len(AND_list) - 1) == i:
-                        query = AND_query
-
-            elif symbol_OR in text_query:
-                OR_list = text_query.split(symbol_OR)
-                OR_query_list = []
-                for j in range(len(OR_list)):
-                    OR_query_list.append(self.character_definition_for_query(OR_list[j]))
-                    if OR_query_list[len(OR_query_list) - 1] != None and OR_query == None:
-                        OR_query = OR_query_list[len(OR_query_list) - 1]
-                    elif OR_query_list[len(OR_query_list) - 1] != None:
-                        OR_query.add(OR_query_list[len(OR_query_list) - 1], Q.OR)
-                query = OR_query
-            else:
-                query = self.character_definition_for_query(text_query)
-
+            query = search_with_AND_OR(request, param="news")
             if query == None:
                 return JsonResponse({'detail': "Bad Request"}, status=400)
             self.queryset = News.objects.filter(query, archive=False).order_by('-id')
-
-        return viewsets.ModelViewSet.list(self, request, *args, **kwargs)
-
+            return viewsets.ModelViewSet.list(self, request, *args, **kwargs)
+        else:
+            return JsonResponse({'detail': "Bad Request"}, status=400)
 
     def update(self, request, *args, **kwargs):
         self.queryset = News.objects.all()
@@ -134,15 +55,14 @@ class NewsViewSet(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False)
     def tags_search(self, request, *args, **kwargs):
         if "query" in request.GET:
-            text_query = request.GET["query"]
-            query = self.character_definition_for_query(text_query, "tags")
+            query = search_with_AND_OR(request, param="tags")
             if query == None:
                 return JsonResponse({'detail': "Bad Request"}, status=400)
-            self.queryset = Tags.objects.filter(query)
+            self.serializer_class = TagsSerializer
+            self.queryset = Tags.objects.filter(query).order_by('-id')
+            return viewsets.ModelViewSet.list(self, request, *args, **kwargs)
         else:
-            self.queryset = Tags.objects.all()
-        self.serializer_class = TagsSerializer
-        return viewsets.ModelViewSet.list(self, request, *args, **kwargs)
+            return JsonResponse({'detail': "Bad Request"}, status=400)
 
 
     @action(methods=['get'], detail=True)
@@ -164,15 +84,14 @@ class NewsViewSet(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False)
     def authors_search(self, request, *args, **kwargs):
         if "query" in request.GET:
-            text_query = request.GET["query"]
-            query = self.character_definition_for_query(text_query, "authors")
+            query = search_with_AND_OR(request, param="authors")
             if query == None:
                 return JsonResponse({'detail': "Bad Request"}, status=400)
-            self.queryset = Author.objects.filter(query)
+            self.serializer_class = AuthorsSerializer
+            self.queryset = Author.objects.filter(query).order_by('-id')
+            return viewsets.ModelViewSet.list(self, request, *args, **kwargs)
         else:
-            self.queryset = Author.objects.all()
-        self.serializer_class = AuthorsSerializer
-        return viewsets.ModelViewSet.list(self, request, *args, **kwargs)
+            return JsonResponse({'detail': "Bad Request"}, status=400)
 
 
     @action(methods=['get'], detail=False)
@@ -190,6 +109,52 @@ class NewsViewSet(viewsets.ModelViewSet):
                 return JsonResponse({'detail': "You are not the author."}, status=403)
         else:
             return JsonResponse({'detail': "You not authorized."}, status=401)
+
+
+class NewNotAuthorViewSet(mixins.CreateModelMixin,
+                   mixins.DestroyModelMixin,
+                   mixins.ListModelMixin,
+                   mixins.RetrieveModelMixin,
+                   GenericViewSet):
+
+    queryset = NewsNotAuthor.objects.all().order_by('-id')
+    serializer_class = NewsNotAuthorSerializer
+    permission_classes = (IsOwnerOrReadOnlyForNotAuthor,)
+    def destroy(self, request, *args, **kwargs):
+        if "lamp" in request.data and request.data["lamp"]:
+            news = NewsNotAuthor.objects.filter(pk=kwargs["pk"])
+            if len(news) > 0:
+
+                #create author
+                context = {
+                    "user": news[0].user.pk,
+                    "name": news[0].nameAuthor
+                }
+                self.serializer_class = AuthorsAdminSerializer
+                self.queryset = Author.objects.all()
+                serializer = self.get_serializer(data=context)
+                serializer.is_valid(raise_exception=True)
+                idAuthor = serializer.save()
+
+                # create news
+                context = {
+                    "title": news[0].title,
+                    "content": news[0].content,
+                    "tags": [i['id'] for i in news[0].tags.all().values("id")],
+                    "author": idAuthor.pk
+                }
+                self.serializer_class = NewsSerializer
+                self.queryset = News.objects.all()
+                serializer = self.get_serializer(data=context)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+
+                #delete news in news not author
+                return viewsets.ModelViewSet.destroy(self, request, *args, **kwargs)
+            else:
+                return JsonResponse({'detail': "Not found news."}, status=404)
+
+        return viewsets.ModelViewSet.destroy(self, request, *args, **kwargs)
 
 
 class RegisterApi(generics.GenericAPIView):

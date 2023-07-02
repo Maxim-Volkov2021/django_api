@@ -44,7 +44,29 @@ class AuthorsAdmin(admin.ModelAdmin):
     get_author_username.short_description = "username"
 
 
+class NewsNotAuthorAdmin(admin.ModelAdmin):
+    list_display = ('id', 'title', 'get_user_username', 'nameAuthor', 'timeCreate')
+    list_display_links = ('id', 'title')
+    search_fields = (
+    'title',
+    'content',
+    'nameAuthor',
+    'user__username',
+    'user__first_name',
+    'user__last_name'
+    )
+    list_filter = ('tags', 'user', 'timeCreate')
+    filter_horizontal = ('tags',)
+
+    def get_user_username(self, object):
+        if object.user:
+            if object.user.username:
+                return object.user.username
+    get_user_username.short_description = "username"
+
+
 admin.site.register(News, NewsAdmin)
 admin.site.register(Tags, TagsAdmin)
 admin.site.register(Author, AuthorsAdmin)
+admin.site.register(NewsNotAuthor, NewsNotAuthorAdmin)
 

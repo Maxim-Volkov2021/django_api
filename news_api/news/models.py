@@ -51,4 +51,21 @@ class News(models.Model):
         verbose_name = "News"
         verbose_name_plural = "News"
 
+class NewsNotAuthor(models.Model):
+    title = models.CharField(max_length=200)
+    content = models.TextField(blank=False)
+    tags = models.ManyToManyField(Tags)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True
+    )
+    timeCreate = models.DateTimeField(auto_now_add=True)
+    timeUpdate = models.DateTimeField(auto_now=True)
+    nameAuthor = models.CharField(
+        max_length=200,
+        unique=True
+    )
 
+    def __str__(self):
+        return self.title

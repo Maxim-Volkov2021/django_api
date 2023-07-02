@@ -25,6 +25,13 @@ class AuthorsSerializer(serializers.ModelSerializer):
         fields = ('id', 'name')
 
 
+class AuthorsAdminSerializer(serializers.ModelSerializer):
+    # author = serializers.HiddenField(default=None)
+    class Meta:
+        model = Author
+        fields = ('id', 'user', 'name')
+
+
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -37,7 +44,8 @@ class RegisterSerializer(serializers.ModelSerializer):
                 validated_data['username'],
                 password=validated_data['password'],
                 first_name=validated_data['first_name'],
-                last_name=validated_data['last_name']
+                last_name=validated_data['last_name'],
+                email=validated_data['email']
             )
             return user
 
@@ -45,4 +53,9 @@ class RegisterSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = '__all__'
+        fields = ('username', 'first_name', 'last_name')
+
+class NewsNotAuthorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NewsNotAuthor
+        fields = ('id', 'title', 'content', 'timeCreate', 'user', 'tags', 'nameAuthor')
