@@ -185,12 +185,17 @@ class AccountApi(generics.GenericAPIView):
             "is_author": False
         }}
         author = Author.objects.filter(user__username=request.user.username).order_by('id')
-        try:
+        if len(author) > 0:
             context["account"]["author_id"] = author[0].pk
             context["account"]["author_name"] = author[0].name
             context["account"]["is_author"] = True
-        except:
-            pass
+        else:
+            application_to_become_an_author = NewsNotAuthor.objects.filter(user__username=request.user.username).order_by('id')
+            if len(application_to_become_an_author) > 0:
+                context["account"]["application_to_become_an_author"] = True
+            else:
+                context["account"]["application_to_become_an_author"] = False
+
         return JsonResponse(context)
 
 
